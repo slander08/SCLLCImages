@@ -72,76 +72,67 @@ async function uploadJSON() {
     const wcaid = document.getElementById("wcaid").value.trim();
 
     const facts = [
-        document.getElementById("fact1").value.trim(),
-        document.getElementById("fact2").value.trim(),
-        document.getElementById("fact3").value.trim(),
-        document.getElementById("fact4").value.trim()
-    ].filter(f => f !== "");
-
-    if (!wcaid) {
-        status.innerText = "Please enter a WCAID.";
-        return;
-    }
+        fact1.value,
+        fact2.value,
+        fact3.value,
+        fact4.value
+    ].filter(f => f.trim() !== "");
 
     const path = "data/people.json";
-
     const url = `https://api.github.com/repos/${owner}/${repo}/contents/${path}`;
 
-    let existingData = {};
     let sha = null;
+    let existingData = {};
 
-    // Try loading existing JSON
-    const getResponse = await fetch(url, {
+    // ALWAYS fetch latest file first
+    const res = await fetch(url, {
         headers: {
-            "Authorization": `token ${token}`
+            "Authorization": `token ${token}`,
+            "Accept": "application/vnd.github+json"
         }
     });
 
-    if (getResponse.ok) {
+    if (res.ok) {
+        const file = await res.json();
 
-        const fileData = await getResponse.json();
+        sha = file.sha;
 
-        sha = fileData.sha;
+        const decoded = atob(file.content.replace(/\n/g, ""));
 
-        const decodedContent = atob(fileData.content.replace(/\n/g, ""));
-
-        existingData = JSON.parse(decodedContent);
+        try {
+            existingData = JSON.parse(decoded);
+        } catch (e) {
+            existingData = {};
+        }
     }
 
-    // Add or update WCAID
+    // update data
     existingData[wcaid] = facts;
 
-    const updatedJSON = JSON.stringify(existingData, null, 4);
+    const updated = JSON.stringify(existingData, null, 4);
 
-    const uploadResponse = await fetch(url, {
+    const uploadRes = await fetch(url, {
         method: "PUT",
-
         headers: {
             "Authorization": `token ${token}`,
-            "Content-Type": "application/json"
+            "Accept": "application/vnd.github+json"
         },
-
         body: JSON.stringify({
-            message: `Update people.json`,
-            content: btoa(updatedJSON),
-            sha: sha
+            message: `update people.json`,
+            content: btoa(updated),
+            sha: sha // IMPORTANT
         })
     });
 
-    const result = await uploadResponse.json();
+    const result = await uploadRes.json();
 
-    if (uploadResponse.ok) {
-
-status.innerText = "people.json updated successfully!";
-
-const now = new Date();
-
-document.getElementById("uploaded").innerText =
-    "Last uploaded: " + now.toLocaleString();
-    } else {
-
-        status.innerText = "Error: " + result.message;
+    if (!uploadRes.ok) {
+        console.log(result);
+        status.innerText = "Upload failed: " + result.message;
+        return;
     }
+
+    status.innerHTML = "✅ Updated successfully";
 }
 
 </script>
