@@ -1,2 +1,2 @@
-# SCLLCImages
-SCLLC Image Repo for streaming
+# SCLLCResources
+SCLLC Resource Repo for streaming
