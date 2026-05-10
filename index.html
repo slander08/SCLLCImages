@@ -1,72 +1,94 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>JSON Uploader</title>
+    <title>WCA JSON Uploader</title>
+
     <style>
         body {
             font-family: Arial;
-            max-width: 500px;
+            max-width: 600px;
             margin: auto;
             padding: 20px;
         }
 
+        h1 {
+            text-align: center;
+        }
+
         input {
             width: 100%;
+            padding: 10px;
             margin-bottom: 10px;
-            padding: 8px;
+            box-sizing: border-box;
         }
 
         button {
-            padding: 10px;
+            width: 100%;
+            padding: 12px;
+            font-size: 16px;
             cursor: pointer;
+        }
+
+        #status {
+            margin-top: 15px;
+            font-weight: bold;
         }
     </style>
 </head>
+
 <body>
 
-<h1>Upload JSON to GitHub</h1>
+<h1>WCA JSON Uploader</h1>
 
-<input type="text" id="token" placeholder="GitHub Personal Access Token">
+<input type="password" id="token" placeholder="GitHub Personal Access Token">
 
 <input type="text" id="owner" placeholder="GitHub Username">
+
 <input type="text" id="repo" placeholder="Repository Name">
 
-<input type="text" id="personId" placeholder="Person ID">
+<input type="text" id="wcaid" placeholder="WCAID">
 
 <input type="text" id="fact1" placeholder="Fact 1">
-<input type="text" id="fact2" placeholder="Fact 2">
-<input type="text" id="fact3" placeholder="Fact 3">
-<input type="text" id="fact4" placeholder="Fact 4">
-<input type="text" id="fact5" placeholder="Fact 5">
 
-<button onclick="uploadJSON()">Upload JSON</button>
+<input type="text" id="fact2" placeholder="Fact 2">
+
+<input type="text" id="fact3" placeholder="Fact 3">
+
+<input type="text" id="fact4" placeholder="Fact 4">
+
+<button onclick="uploadJSON()">Update people.json</button>
 
 <p id="status"></p>
 
 <script>
+
 async function uploadJSON() {
 
-    const token = document.getElementById("token").value;
-    const owner = document.getElementById("owner").value;
-    const repo = document.getElementById("repo").value;
-    const id = document.getElementById("personId").value;
+    const token = document.getElementById("token").value.trim();
+    const owner = document.getElementById("owner").value.trim();
+    const repo = document.getElementById("repo").value.trim();
+    const wcaid = document.getElementById("wcaid").value.trim();
 
     const facts = [
-        fact1.value,
-        fact2.value,
-        fact3.value,
-        fact4.value,
-        fact5.value
-    ].filter(f => f.trim() !== "");
+        document.getElementById("fact1").value.trim(),
+        document.getElementById("fact2").value.trim(),
+        document.getElementById("fact3").value.trim(),
+        document.getElementById("fact4").value.trim()
+    ].filter(f => f !== "");
 
-    const path = `data/people.json`;
+    if (!wcaid) {
+        status.innerText = "Please enter a WCAID.";
+        return;
+    }
+
+    const path = "data/people.json";
 
     const url = `https://api.github.com/repos/${owner}/${repo}/contents/${path}`;
 
     let existingData = {};
     let sha = null;
 
-    // GET existing file
+    // Try loading existing JSON
     const getResponse = await fetch(url, {
         headers: {
             "Authorization": `token ${token}`
@@ -74,41 +96,48 @@ async function uploadJSON() {
     });
 
     if (getResponse.ok) {
-        const file = await getResponse.json();
 
-        sha = file.sha;
+        const fileData = await getResponse.json();
 
-        const decoded = atob(file.content.replace(/\n/g, ""));
+        sha = fileData.sha;
 
-        existingData = JSON.parse(decoded);
+        const decodedContent = atob(fileData.content.replace(/\n/g, ""));
+
+        existingData = JSON.parse(decodedContent);
     }
 
-    // Add/update person
-    existingData[id] = facts;
+    // Add or update WCAID
+    existingData[wcaid] = facts;
 
-    const updatedContent = JSON.stringify(existingData, null, 4);
+    const updatedJSON = JSON.stringify(existingData, null, 4);
 
-    const response = await fetch(url, {
+    const uploadResponse = await fetch(url, {
         method: "PUT",
+
         headers: {
             "Authorization": `token ${token}`,
             "Content-Type": "application/json"
         },
+
         body: JSON.stringify({
             message: `Update people.json`,
-            content: btoa(updatedContent),
+            content: btoa(updatedJSON),
             sha: sha
         })
     });
 
-    const result = await response.json();
+    const result = await uploadResponse.json();
 
-    if (response.ok) {
-        status.innerText = "people.json updated!";
+    if (uploadResponse.ok) {
+
+        status.innerText = "people.json updated successfully!";
+
     } else {
+
         status.innerText = "Error: " + result.message;
     }
 }
+
 </script>
 
 </body>
